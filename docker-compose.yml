@@ -1,0 +1,76 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rag_template:latest
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - db
+      - chroma
+      - redis
+    networks:
+      - rag_template_network
+    volumes:
+      - .:/code
+      - static_volume:/code/static
+    ports:
+      - "3002:3002"
+
+  db:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - rag_template_network
+    ports:
+      - "5433:5432"
+
+  chroma:
+    image: ghcr.io/chroma-core/chroma:latest
+    volumes:
+      - index_data:/chroma/.chroma/index
+      - chroma_data:/chroma/chroma
+    ports:
+      - "8001:8000"
+    networks:
+      - rag_template_network
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rag_template_network
+
+volumes:
+  db_data:
+    driver: local
+  static_volume:
+  index_data:
+    driver: local
+  backups:
+    driver: local
+  chroma_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  rag_template_network:
+    driver: bridge
